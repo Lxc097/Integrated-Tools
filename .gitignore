@@ -1,0 +1,13 @@
+node_modules/
+dist/
+release/
+.backup/
+.npm-cache/
+artifacts/
+temp/
+__pycache__/
+*.backup
+.env
+*.log
+.DS_Store
+Thumbs.db
