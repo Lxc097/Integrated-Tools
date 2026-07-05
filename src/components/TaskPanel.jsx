@@ -6,6 +6,10 @@ const sourceIcons = {
   web: Cloud,
 };
 
+function formatNumber(num) {
+  return Math.round(num).toLocaleString('en-US');
+}
+
 export function TaskPanel({
   prompt,
   systemPrompt,
@@ -20,6 +24,8 @@ export function TaskPanel({
   onSystemPromptChange,
   onModelChange,
   onRunTask,
+  contextUsed,
+  maxContextTokens,
 }) {
   const groupedModels = models.reduce((groups, item) => {
     const vendor = item.vendor || '其他';
@@ -29,6 +35,13 @@ export function TaskPanel({
     groups[vendor].push(item);
     return groups;
   }, {});
+
+  const contextPercent = maxContextTokens
+    ? Math.min((contextUsed / maxContextTokens) * 100, 100)
+    : 0;
+
+  const contextColor =
+    contextPercent > 80 ? '#ef4444' : contextPercent >= 50 ? '#f59e0b' : '#3b82f6';
 
   return (
     <div className="panel task-panel">
@@ -114,6 +127,52 @@ export function TaskPanel({
           {isRunning ? '\u6267\u884c\u4e2d' : '\u6267\u884c\u4efb\u52a1'}
         </button>
       </div>
+
+      {maxContextTokens ? (
+        <div style={{ marginTop: 12 }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 6,
+              fontSize: 12,
+              color: 'rgba(255, 255, 255, 0.6)',
+              fontFamily: 'inherit',
+            }}
+          >
+            <span>
+              {'上下文: '}
+              {formatNumber(contextUsed)}
+              {' / '}
+              {formatNumber(maxContextTokens)}
+              {' tokens'}
+            </span>
+            <span style={{ color: contextColor, fontWeight: 500 }}>
+              {contextPercent.toFixed(1)}%
+            </span>
+          </div>
+          <div
+            style={{
+              width: '100%',
+              height: 6,
+              borderRadius: 3,
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                width: `${contextPercent}%`,
+                height: '100%',
+                borderRadius: 3,
+                backgroundColor: contextColor,
+                transition: 'width 0.4s ease',
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

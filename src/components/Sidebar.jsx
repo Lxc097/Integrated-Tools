@@ -4,9 +4,12 @@ import {
   Bot,
   KeyRound,
   LayoutDashboard,
+  MessageSquare,
+  Plus,
   Settings,
   Sparkles,
   TerminalSquare,
+  Trash2,
 } from 'lucide-react';
 
 const navItems = [
@@ -18,9 +21,17 @@ const navItems = [
   { id: 'settings', label: '系统设置', icon: Settings },
 ];
 
-export function Sidebar({ activePage, onNavigate }) {
+export function Sidebar({
+  page,
+  setPage,
+  sessions = [],
+  currentSessionId,
+  onCreateSession,
+  onSwitchSession,
+  onDeleteSession,
+}) {
   return (
-    <aside className="sidebar">
+    <>
       <div className="brand">
         <div className="brand-mark">
           <Sparkles size={18} />
@@ -36,9 +47,9 @@ export function Sidebar({ activePage, onNavigate }) {
           const Icon = item.icon;
           return (
             <button
-              className={`nav-item ${activePage === item.id ? 'active' : ''}`}
+              className={`nav-item ${page === item.id ? 'active' : ''}`}
               key={item.id}
-              onClick={() => onNavigate(item.id)}
+              onClick={() => setPage(item.id)}
             >
               <Icon size={18} />
               <span>{item.label}</span>
@@ -46,6 +57,49 @@ export function Sidebar({ activePage, onNavigate }) {
           );
         })}
       </nav>
-    </aside>
+
+      <div className="sessions-section">
+        <div className="sessions-header">
+          <span>历史会话</span>
+          <span className="sessions-count">{sessions.length}</span>
+        </div>
+
+        <div className="sessions-list">
+          {sessions.map((session) => {
+            const isActive = currentSessionId === session.id;
+            const rawTitle = session.name || '新会话';
+            const displayTitle =
+              rawTitle.length > 14 ? `${rawTitle.slice(0, 14)}…` : rawTitle;
+
+            return (
+              <div
+                key={session.id}
+                className={`session-item ${isActive ? 'active' : ''}`}
+                onClick={() => onSwitchSession(session.id)}
+                title={rawTitle}
+              >
+                <MessageSquare size={14} className="session-icon" />
+                <span className="session-title">{displayTitle}</span>
+                <button
+                  className="session-delete-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteSession(session.id);
+                  }}
+                  aria-label="删除会话"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        <button className="new-session-btn" onClick={onCreateSession}>
+          <Plus size={16} />
+          <span>新建会话</span>
+        </button>
+      </div>
+    </>
   );
 }
