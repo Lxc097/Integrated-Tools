@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import {
   LayoutDashboard, Key, Cpu, FileText, BarChart3, Settings, Shield, Menu, X,
-  PlusCircle, MessageSquare, Zap, Brain, User, Send, Copy, Paperclip, Trash2, Check
+  PlusCircle, MessageSquare, Zap, Brain, User, Send, Copy, Paperclip, Trash2, Check,
+  Sparkles
 } from 'lucide-react';
 import { CosmicBackdrop } from './components/CosmicBackdrop';
 import { HolographicGlobe } from './components/HolographicGlobe';
@@ -16,6 +16,57 @@ function estimateTokens(text) {
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 10);
+
+function getSmartRecommendation(text) {
+  const candidates = models.filter(m => {
+    if (m.category === 'embedding') return false;
+    return true;
+  });
+
+  const lower = text.toLowerCase();
+  let scored = candidates.map(m => {
+    let score = 0;
+    const name = m.name.toLowerCase();
+    const vendor = (m.vendor || '').toLowerCase();
+    const combined = name + ' ' + vendor;
+
+    // 编程/代码相关
+    if (/代码|编程|debug|调试|算法|function|code|python|javascript|java|react|vue/.test(lower)) {
+      if (/claude|deepseek|copilot/.test(combined)) score += 5;
+      if (/gpt|openai/.test(combined)) score += 3;
+    }
+    // 翻译/多语言
+    if (/翻译|translate|英文|中文|日语|法语/.test(lower)) {
+      if (/qwen|gpt|claude/.test(combined)) score += 5;
+    }
+    // 数学/逻辑
+    if (/数学|计算|公式|math|逻辑|推理/.test(lower)) {
+      if (/deepseek|gpt|claude/.test(combined)) score += 4;
+    }
+    // 创意写作
+    if (/写作|文章|小说|创意|故事|诗/.test(lower)) {
+      if (/claude|gpt|qwen/.test(combined)) score += 4;
+    }
+    // 分析/总结
+    if (/分析|总结|报告|review|summary/.test(lower)) {
+      if (/claude|gpt/.test(combined)) score += 3;
+    }
+    // 通用兜底
+    if (/gpt|claude/.test(combined)) score += 2;
+    if (/deepseek|qwen/.test(combined)) score += 1;
+
+    // 优先选择大上下文模型
+    if (m.maxContextTokens >= 32000) score += 1;
+    if (m.maxContextTokens >= 128000) score += 1;
+
+    return { model: m, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  const top3 = scored.slice(0, 3).map(s => s.model);
+  if (top3.length === 0) return [models[0]];
+  return top3;
+}
 
 export default function App() {
   // Navigation & UI
@@ -66,6 +117,12 @@ export default function App() {
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
+  // Smart mode state
+  const [smartPending, setSmartPending] = useState(false);
+  const [smartRecommendations, setSmartRecommendations] = useState([]);
+  const [smartRecIndex, setSmartRecIndex] = useState(0);
+  const [smartUserMsg, setSmartUserMsg] = useState(null);
+
   // Persist sessions
   useEffect(() => {
     localStorage.setItem('console_sessions', JSON.stringify(sessions));
@@ -88,7 +145,7 @@ export default function App() {
   // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [currentSession?.messages, isRunning]);
+  }, [currentSession?.messages, isRunning, smartPending]);
 
   // Session CRUD
   const createSession = () => {
@@ -105,6 +162,11 @@ export default function App() {
   const switchSession = (id) => {
     setCurrentSessionId(id);
     setMobileMenuOpen(false);
+    // Reset smart state on session switch
+    setSmartPending(false);
+    setSmartRecommendations([]);
+    setSmartRecIndex(0);
+    setSmartUserMsg(null);
   };
 
   const deleteSession = (id) => {
@@ -123,36 +185,14 @@ export default function App() {
     );
   };
 
-  // Dispatch: run task
-  const runTask = async () => {
-    if (!task.trim() || isRunning) return;
-
-    const userMsg = {
-      role: 'user',
-      content: task,
-      timestamp: Date.now(),
-    };
-
-    const newMessages = [...(currentSession?.messages || []), userMsg];
-    updateSessionMessages(newMessages);
-
-    // Auto-rename session
-    if (currentSession?.name === '新会话' || !currentSession?.messages?.length) {
-      const shortName = task.slice(0, 30) + (task.length > 30 ? '...' : '');
-      setSessions(prev =>
-        prev.map(s => (s.id === currentSessionId ? { ...s, name: shortName } : s))
-      );
-    }
-
-    setTask('');
+  // Simulate API call (shared between normal and smart-confirm flows)
+  const executeApiCall = async (newMessages, modelId, sourceMode) => {
     setIsRunning(true);
-
     try {
-      // Simulate API call result
-      const modelName = models.find(m => m.id === selectedModel)?.name || selectedModel;
-      const assistantContent = `# 来自 ${modelName} 的响应\n\n已收到您的任务，当前连接模式：**${source === 'local' ? '本地' : '云端'}**。\n\n这是一份模拟响应，实际部署时请替换为真实 API。\n\n> 提示：可通过左侧「API 密钥」页配置您的模型密钥。`;
+      const modelName = models.find(m => m.id === modelId)?.name || modelId;
+      const sourceLabel = sourceMode === 'local' ? '本地' : sourceMode === 'web' ? '云端' : '智能';
+      const assistantContent = `# 来自 ${modelName} 的响应\n\n已收到您的任务，当前连接模式：**${sourceLabel}**。\n\n这是一份模拟响应，实际部署时请替换为真实 API。\n\n> 提示：可通过左侧「API 密钥」页配置您的模型密钥。`;
 
-      // Simulate delay
       await new Promise(resolve => setTimeout(resolve, 1500));
 
       const assistantMsg = {
@@ -175,6 +215,89 @@ export default function App() {
     }
   };
 
+  // Dispatch: run task
+  const runTask = async () => {
+    if (!task.trim() || isRunning || smartPending) return;
+
+    const userMsg = {
+      role: 'user',
+      content: task,
+      timestamp: Date.now(),
+    };
+
+    // Auto-rename session
+    if (currentSession?.name === '新会话' || !currentSession?.messages?.length) {
+      const shortName = task.slice(0, 30) + (task.length > 30 ? '...' : '');
+      setSessions(prev =>
+        prev.map(s => (s.id === currentSessionId ? { ...s, name: shortName } : s))
+      );
+    }
+
+    const currentMessages = currentSession?.messages || [];
+
+    if (source === 'smart') {
+      // Smart mode: add user message, then show recommendations
+      const newMessages = [...currentMessages, userMsg];
+      updateSessionMessages(newMessages);
+
+      const recommendations = getSmartRecommendation(task);
+      setSmartPending(true);
+      setSmartRecommendations(recommendations);
+      setSmartRecIndex(0);
+      setSmartUserMsg(userMsg);
+      setTask('');
+    } else {
+      // Normal mode: add user message and execute
+      const newMessages = [...currentMessages, userMsg];
+      updateSessionMessages(newMessages);
+      setTask('');
+      await executeApiCall(newMessages, selectedModel, source);
+    }
+  };
+
+  // Smart mode: confirm model
+  const handleSmartConfirm = () => {
+    if (smartRecommendations.length === 0) return;
+
+    const confirmedModel = smartRecommendations[smartRecIndex];
+    const currentMessages = currentSession?.messages || [];
+
+    // Reset smart state
+    setSmartPending(false);
+    setSmartRecommendations([]);
+    setSmartRecIndex(0);
+    setSmartUserMsg(null);
+
+    // Execute with confirmed model (user message already in chat)
+    executeApiCall(currentMessages, confirmedModel.id, 'smart');
+  };
+
+  // Smart mode: change to next recommendation
+  const handleSmartChange = () => {
+    if (smartRecIndex + 1 >= smartRecommendations.length) {
+      // No more recommendations — cycle back to first
+      setSmartRecIndex(0);
+    } else {
+      setSmartRecIndex(prev => prev + 1);
+    }
+  };
+
+  // Smart mode: cancel and revert
+  const handleSmartCancel = () => {
+    // Remove the user message that was added
+    if (smartUserMsg) {
+      const currentMessages = currentSession?.messages || [];
+      const filtered = currentMessages.filter(m => m.timestamp !== smartUserMsg.timestamp);
+      updateSessionMessages(filtered);
+    }
+
+    // Reset smart state
+    setSmartPending(false);
+    setSmartRecommendations([]);
+    setSmartRecIndex(0);
+    setSmartUserMsg(null);
+  };
+
   const updateSessionMessages = (messages) => {
     setSessions(prev =>
       prev.map(s => (s.id === currentSessionId ? { ...s, messages } : s))
@@ -193,6 +316,14 @@ export default function App() {
     setAttachedFiles(prev => [...prev, ...files]);
   };
 
+  const handleSourceChange = (newSource) => {
+    setSource(newSource);
+    // Reset smart state if switching away from smart
+    if (newSource !== 'smart' && smartPending) {
+      handleSmartCancel();
+    }
+  };
+
   const currentModelObj = models.find(m => m.id === selectedModel);
   const maxTokens = currentModelObj?.maxContextTokens || 8192;
   const allMessages = currentSession?.messages || [];
@@ -200,6 +331,11 @@ export default function App() {
   const usedTokens = estimateTokens(allText);
   const usagePct = Math.min(100, Math.round((usedTokens / maxTokens) * 100));
   const contextClass = usagePct > 80 ? 'danger' : usagePct > 50 ? 'warn' : 'safe';
+
+  const getPlaceholder = () => {
+    if (source === 'smart') return '描述您的需求，AI 将智能匹配最佳模型...';
+    return '输入任务描述...';
+  };
 
   // ============ RENDER ============
   const renderPage = () => {
@@ -209,7 +345,7 @@ export default function App() {
           <section className="page-enter chat-layout">
             {/* Message area */}
             <div className="chat-messages">
-              {(!currentSession?.messages || currentSession.messages.length === 0) && !isRunning && (
+              {(!currentSession?.messages || currentSession.messages.length === 0) && !isRunning && !smartPending && (
                 <div className="chat-empty">
                   <div className="chat-empty-icon">
                     <Zap size={40} />
@@ -253,6 +389,39 @@ export default function App() {
                 </div>
               ))}
 
+              {/* Smart recommendation card */}
+              {smartPending && smartRecommendations.length > 0 && (
+                <div className="msg-row assistant">
+                  <div className="msg-avatar">
+                    <Sparkles className="text-purple-300" size={18} />
+                  </div>
+                  <div className="msg-bubble smart-rec-bubble">
+                    <div className="smart-rec-header">
+                      <span className="smart-rec-icon">
+                        <Sparkles size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+                        AI 智能推荐
+                      </span>
+                      <span className="smart-rec-badge">智能模式</span>
+                    </div>
+                    <div className="smart-rec-body">
+                      <strong>{smartRecommendations[smartRecIndex].name}</strong>
+                      <span className="smart-rec-provider">
+                        {smartRecommendations[smartRecIndex].vendor} · {smartRecommendations[smartRecIndex].maxContextTokens?.toLocaleString()} tokens
+                      </span>
+                      <p>根据您的需求智能匹配的最佳模型</p>
+                    </div>
+                    <div className="smart-rec-meta">
+                      <span>推荐 {smartRecIndex + 1} / {smartRecommendations.length}</span>
+                    </div>
+                    <div className="smart-rec-actions">
+                      <button onClick={handleSmartConfirm}>使用此模型</button>
+                      <button onClick={handleSmartChange}>换一个</button>
+                      <button onClick={handleSmartCancel}>取消</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {isRunning && (
                 <div className="msg-row assistant">
                   <div className="msg-avatar">
@@ -290,15 +459,22 @@ export default function App() {
               <div className="chat-source-toggle">
                 <button
                   className={`chat-source-opt ${source === 'local' ? 'active' : ''}`}
-                  onClick={() => setSource('local')}
+                  onClick={() => handleSourceChange('local')}
                 >
                   本地
                 </button>
                 <button
                   className={`chat-source-opt ${source === 'web' ? 'active' : ''}`}
-                  onClick={() => setSource('web')}
+                  onClick={() => handleSourceChange('web')}
                 >
                   云端
+                </button>
+                <button
+                  className={`chat-source-opt smart-source-opt ${source === 'smart' ? 'active' : ''}`}
+                  onClick={() => handleSourceChange('smart')}
+                >
+                  <Sparkles size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 3 }} />
+                  智能
                 </button>
 
                 <button
@@ -340,6 +516,7 @@ export default function App() {
                     localStorage.setItem('console_model', e.target.value);
                   }}
                   className="model-select"
+                  disabled={source === 'smart'}
                 >
                   {models.map(m => (
                     <option key={m.id} value={m.id}>
@@ -353,15 +530,15 @@ export default function App() {
                   value={task}
                   onChange={e => setTask(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="输入任务描述..."
+                  placeholder={getPlaceholder()}
                   rows={1}
                   className="chat-textarea"
-                  disabled={isRunning}
+                  disabled={isRunning || smartPending}
                 />
 
                 <button
                   onClick={runTask}
-                  disabled={isRunning || !task.trim()}
+                  disabled={isRunning || !task.trim() || smartPending}
                   className="chat-send-btn"
                   title="发送"
                 >
@@ -393,7 +570,7 @@ export default function App() {
                       <div className="model-avatar shrink-0"><Cpu size={22} /></div>
                       <div>
                         <strong className="block text-white">{m.name}</strong>
-                        <span className="text-xs text-gray-400">{m.provider} · {m.maxContextTokens?.toLocaleString()} tokens</span>
+                        <span className="text-xs text-gray-400">{m.vendor} · {m.maxContextTokens?.toLocaleString()} tokens</span>
                         <p className="text-sm text-gray-300 mt-2">{m.description || '高性能模型'}</p>
                       </div>
                     </div>

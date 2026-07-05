@@ -1629,3 +1629,144 @@ h2 {
     font-size: 12px;
   }
 }
+/* ===== Smart Mode Styles ===== */
+
+.smart-rec-bubble {
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-top-left-radius: 4px;
+  animation: smartRecSlideIn 0.3s ease-out;
+}
+
+@keyframes smartRecSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.smart-rec-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.smart-rec-icon {
+  color: #a78bfa;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+
+.smart-rec-badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.smart-rec-body {
+  margin-bottom: 12px;
+}
+
+.smart-rec-body strong {
+  display: block;
+  color: #f9fafb;
+  font-size: 16px;
+  margin-bottom: 2px;
+}
+
+.smart-rec-body .smart-rec-provider {
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.smart-rec-body p {
+  color: #a78bfa;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.smart-rec-meta {
+  margin-bottom: 10px;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.smart-rec-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.smart-rec-actions button {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.smart-rec-actions button:first-child {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  color: #fff;
+}
+
+.smart-rec-actions button:first-child:hover {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  box-shadow: 0 2px 10px rgba(139, 92, 246, 0.35);
+}
+
+.smart-rec-actions button:nth-child(2) {
+  background: rgba(255, 255, 255, 0.06);
+  color: #d1d5db;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.smart-rec-actions button:nth-child(2):hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.smart-rec-actions button:last-child {
+  background: transparent;
+  color: #6b7280;
+}
+
+.smart-rec-actions button:last-child:hover {
+  color: #f87171;
+}
+
+/* Smart source option active state */
+.smart-source-opt.active {
+  background: rgba(139, 92, 246, 0.15) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
+  color: #c4b5fd !important;
+}
+
+.smart-source-opt:not(.active):hover {
+  background: rgba(139, 92, 246, 0.08);
+  border-color: rgba(139, 92, 246, 0.2);
+  color: #c4b5fd;
+}
+
+/* Disabled model select in smart mode */
+.model-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Smart mode textarea focus ring */
+.chat-textarea:focus {
+  outline: none;
+  border-color: rgba(139, 92, 246, 0.4);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+}
