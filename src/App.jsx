@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import {
   LayoutDashboard, Key, Cpu, FileText, BarChart3, Settings, Shield, Menu, X,
   PlusCircle, MessageSquare, Zap, Brain, User, Send, Copy, Paperclip, Trash2, Check,
-  Sparkles
+  Sparkles, Eye, EyeOff
 } from 'lucide-react';
 import { CosmicBackdrop } from './components/CosmicBackdrop';
 import { HolographicGlobe } from './components/HolographicGlobe';
@@ -66,6 +66,180 @@ function getSmartRecommendation(text) {
   const top3 = scored.slice(0, 3).map(s => s.model);
   if (top3.length === 0) return [models[0]];
   return top3;
+}
+
+// ===== ApiKeysManager 组件 =====
+function ApiKeysManager({ models }) {
+  const providerConfigs = [
+    { name: 'OpenAI',    color: '#10a37f', abbr: 'OA', vendor: 'OpenAI'    },
+    { name: 'Anthropic', color: '#d97706', abbr: 'AN', vendor: 'Anthropic' },
+    { name: 'Google',    color: '#4285f4', abbr: 'GO', vendor: 'Google'    },
+    { name: 'DeepSeek',  color: '#6366f1', abbr: 'DS', vendor: 'DeepSeek'  },
+    { name: 'Moonshot',  color: '#8b5cf6', abbr: 'MK', vendor: 'Moonshot'  },
+    { name: 'Zhipu',     color: '#3b82f6', abbr: 'ZP', vendor: 'Zhipu AI'  },
+    { name: 'Qwen',      color: '#f97316', abbr: 'QW', vendor: 'Alibaba'   },
+    { name: 'Groq',      color: '#ef4444', abbr: 'GQ', vendor: 'Groq'     },
+    { name: 'Together',  color: '#06b6d4', abbr: 'TG', vendor: 'Together'  },
+  ];
+
+  const [keys, setKeys]           = useState({});
+  const [visibility, setVisibility] = useState({});
+  const [savedStatus, setSavedStatus] = useState({});
+  const [flashSave, setFlashSave] = useState(null);
+
+  useEffect(() => {
+    const status = {};
+    const savedKeys = {};
+    providerConfigs.forEach(p => {
+      const val = localStorage.getItem(`api_key_${p.name}`);
+      status[p.name] = !!val;
+      savedKeys[p.name] = val || '';
+    });
+    setSavedStatus(status);
+    setKeys(savedKeys);
+  }, []);
+
+  const modelStats = useMemo(() => {
+    const stats = {};
+    providerConfigs.forEach(p => {
+      const vendorModels = models.filter(m => m.vendor === p.vendor);
+      stats[p.name] = {
+        count: vendorModels.length,
+        baseUrl: vendorModels[0]?.baseUrl || '',
+      };
+    });
+    return stats;
+  }, [models]);
+
+  const configuredCount = Object.values(savedStatus).filter(Boolean).length;
+
+  const handleSave = (name) => {
+    const key = (keys[name] || '').trim();
+    if (key) {
+      localStorage.setItem(`api_key_${name}`, key);
+    } else {
+      localStorage.removeItem(`api_key_${name}`);
+    }
+    setSavedStatus(prev => ({ ...prev, [name]: !!key }));
+    setFlashSave(name);
+    setTimeout(() => setFlashSave(null), 800);
+  };
+
+  const handleClear = (name) => {
+    localStorage.removeItem(`api_key_${name}`);
+    setKeys(prev => ({ ...prev, [name]: '' }));
+    setSavedStatus(prev => ({ ...prev, [name]: false }));
+  };
+
+  const toggleEye = (name) => {
+    setVisibility(prev => ({ ...prev, [name]: !prev[name] }));
+  };
+
+  const handleChange = (name, value) => {
+    setKeys(prev => ({ ...prev, [name]: value }));
+  };
+
+  return (
+    <section className="page-enter content-wrap py-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div>
+          <h1 className="mb-1">API 密钥管理</h1>
+          <p className="text-sm text-gray-400">
+            密钥安全存储于浏览器本地，不会上传至任何服务器
+          </p>
+        </div>
+        <div className="apikey-summary-badge">
+          <Key size={15} />
+          <span>已配置 <strong className="text-white">{configuredCount}</strong> / {providerConfigs.length}</span>
+        </div>
+      </div>
+
+      <div className="apikey-grid">
+        {providerConfigs.map(p => {
+          const isSaved  = savedStatus[p.name];
+          const isFlash  = flashSave === p.name;
+          const isVis    = visibility[p.name];
+          const stat     = modelStats[p.name] || { count: 0, baseUrl: '' };
+
+          return (
+            <div
+              key={p.name}
+              className="apikey-card"
+              style={{ '--card-accent': p.color }}
+            >
+              <div className="apikey-card-header">
+                <div className="apikey-logo" style={{ background: p.color + '22', color: p.color, borderColor: p.color + '44' }}>
+                  {p.abbr}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-white text-[15px]">{p.name}</span>
+                    {isSaved && <span className="apikey-badge-ok">已配置</span>}
+                    {!isSaved && <span className="apikey-badge-no">未配置</span>}
+                  </div>
+                  <div className="apikey-meta">
+                    <span>{stat.count} 个模型</span>
+                    {stat.baseUrl && (
+                      <>
+                        <span className="text-gray-600">·</span>
+                        <span className="apikey-base-url" title={stat.baseUrl}>
+                          {stat.baseUrl}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="apikey-input-wrap">
+                <div className="apikey-input-icon">
+                  <Key size={14} />
+                </div>
+                <input
+                  type={isVis ? 'text' : 'password'}
+                  placeholder="sk-..."
+                  value={keys[p.name] || ''}
+                  onChange={e => handleChange(p.name, e.target.value)}
+                  className="apikey-input"
+                  spellCheck={false}
+                  autoComplete="off"
+                />
+                {isSaved && <span className="apikey-status-dot" style={{ background: p.color }} />}
+                <button
+                  type="button"
+                  className="apikey-eye-btn"
+                  onClick={() => toggleEye(p.name)}
+                  tabIndex={-1}
+                  title={isVis ? '隐藏密钥' : '显示密钥'}
+                >
+                  {isVis ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+
+              <div className="apikey-actions">
+                <button
+                  className={`apikey-save-btn ${isFlash ? 'apikey-save-flash' : ''}`}
+                  style={{ '--btn-color': p.color }}
+                  onClick={() => handleSave(p.name)}
+                >
+                  {isFlash ? <><Check size={14} /> 已保存</> : '保存密钥'}
+                </button>
+                {isSaved && (
+                  <button
+                    className="apikey-clear-btn"
+                    onClick={() => handleClear(p.name)}
+                    title="清空密钥"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 export default function App() {
@@ -632,24 +806,7 @@ export default function App() {
       }
 
       case 'apikeys':
-        return (
-          <section className="page-enter content-wrap py-6">
-            <h1 className="mb-6">API 密钥管理</h1>
-            <div className="panel p-6">
-              <p className="text-gray-400">配置各模型提供商的 API 密钥，密钥将安全存储于本地。</p>
-              <div className="mt-4 space-y-3">
-                {['OpenAI', 'Anthropic', 'Google', 'DeepSeek', 'Moonshot', 'Zhipu', 'Qwen', 'Groq', 'Together'].map(p => (
-                  <div key={p} className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
-                    <Shield size={18} className="text-gray-500" />
-                    <span className="flex-1 text-white">{p}</span>
-                    <input type="password" placeholder="sk-..." className="bg-white/10 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm w-64 outline-none focus:border-blue-500" />
-                    <button className="text-xs bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition">保存</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        );
+        return <ApiKeysManager models={models} />;
 
       case 'logs':
         return (
