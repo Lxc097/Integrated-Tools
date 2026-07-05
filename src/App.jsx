@@ -122,6 +122,7 @@ export default function App() {
   const [smartRecommendations, setSmartRecommendations] = useState([]);
   const [smartRecIndex, setSmartRecIndex] = useState(0);
   const [smartUserMsg, setSmartUserMsg] = useState(null);
+  const [dispatchToast, setDispatchToast] = useState(null);
 
   // Persist sessions
   useEffect(() => {
@@ -343,6 +344,11 @@ export default function App() {
       case 'dispatch':
         return (
           <section className="page-enter chat-layout">
+            {dispatchToast && (
+              <div className="dispatch-toast" onAnimationEnd={() => setDispatchToast(null)}>
+                {dispatchToast}
+              </div>
+            )}
             {/* Message area */}
             <div className="chat-messages">
               {(!currentSession?.messages || currentSession.messages.length === 0) && !isRunning && !smartPending && (
@@ -550,36 +556,80 @@ export default function App() {
         );
 
       // ===== Other pages (unchanged) =====
-      case 'models':
-        const modelCategories = {};
+      case 'models': {
+        const vendorMeta = {
+          'Ollama':    { color: '#10b981', short: 'OL'  },
+          'LM Studio': { color: '#f59e0b', short: 'LM'  },
+          'OpenAI':    { color: '#10a37f', short: 'AI'  },
+          'Anthropic': { color: '#d97706', short: 'AN'  },
+          'Zhipu AI':  { color: '#3b82f6', short: 'ZP'  },
+          'Alibaba':   { color: '#f97316', short: 'ALI' },
+        };
+
+        const vendorMap = {};
         models.forEach(m => {
-          const cat = m.category || 'other';
-          if (!modelCategories[cat]) modelCategories[cat] = [];
-          modelCategories[cat].push(m);
+          if (!vendorMap[m.vendor]) vendorMap[m.vendor] = [];
+          vendorMap[m.vendor].push(m);
         });
 
+        const vendors = Object.entries(vendorMap).map(([vendor, vendorModels]) => ({
+          vendor,
+          models: vendorModels,
+          color:     vendorMeta[vendor]?.color || '#6b7280',
+          shortName: vendorMeta[vendor]?.short || vendor.slice(0, 2).toUpperCase(),
+        }));
+
+        const handleVendorClick = (v) => {
+          const first = v.models[0];
+          setSelectedModel(first.id);
+          setSource(first.source);
+          localStorage.setItem('selectedModel', first.id);
+          localStorage.setItem('source', first.source);
+          setDispatchToast(`已自动选择 ${v.vendor} 的 ${first.name}`);
+          setPage('dispatch');
+        };
+
         return (
-          <section className="page-enter content-wrap py-6">
-            <h1 className="mb-6">模型池</h1>
-            {Object.entries(modelCategories).map(([cat, catModels]) => (
-              <div key={cat} className="mb-8">
-                <h2 className="mb-4 capitalize text-blue-300">{cat === 'llm' ? '大语言模型' : cat === 'vision' ? '视觉模型' : cat === 'embedding' ? '嵌入模型' : cat}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {catModels.map(m => (
-                    <div key={m.id} className="panel p-5 flex items-start gap-4">
-                      <div className="model-avatar shrink-0"><Cpu size={22} /></div>
-                      <div>
-                        <strong className="block text-white">{m.name}</strong>
-                        <span className="text-xs text-gray-400">{m.vendor} · {m.maxContextTokens?.toLocaleString()} tokens</span>
-                        <p className="text-sm text-gray-300 mt-2">{m.description || '高性能模型'}</p>
-                      </div>
-                    </div>
-                  ))}
+          <div className="page-models">
+            <div className="page-header">
+              <h2>模型池</h2>
+              <p className="page-subtitle">按厂商浏览可用模型，点击卡片快速跳转到调度台</p>
+            </div>
+
+            <div className="vendor-grid">
+              {vendors.map(v => (
+                <div
+                  key={v.vendor}
+                  className="vendor-card"
+                  style={{ '--vendor-color': v.color }}
+                  onClick={() => handleVendorClick(v)}
+                >
+                  <div className="vendor-logo" style={{ background: `linear-gradient(135deg, ${v.color}, ${v.color}dd)` }}>
+                    <span>{v.shortName}</span>
+                  </div>
+
+                  <div className="vendor-info">
+                    <h3>{v.vendor}</h3>
+                    <span className="vendor-count">{v.models.length} 个模型</span>
+                  </div>
+
+                  <div className="vendor-models">
+                    {v.models.map(m => (
+                      <span key={m.id} className="vendor-model-tag">
+                        {m.name}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="vendor-card-hint">
+                    点击调度 →
+                  </div>
                 </div>
-              </div>
-            ))}
-          </section>
+              ))}
+            </div>
+          </div>
         );
+      }
 
       case 'apikeys':
         return (

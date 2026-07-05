@@ -1770,3 +1770,235 @@ h2 {
   border-color: rgba(139, 92, 246, 0.4);
   box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
 }
+
+/* ============================================================
+   模型池 — 厂商卡片网格
+   ============================================================ */
+
+.page-models {
+  padding: 2rem;
+}
+
+.page-models .page-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.page-models .page-header h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin-bottom: 0.5rem;
+}
+
+.page-models .page-subtitle {
+  color: #94a3b8;
+  font-size: 0.95rem;
+}
+
+/* ---------- 网格容器 ---------- */
+.vendor-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+@media (max-width: 900px) {
+  .vendor-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .vendor-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- 卡片 ---------- */
+.vendor-card {
+  position: relative;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  padding: 2rem 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+  overflow: hidden;
+}
+
+.vendor-card::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 16px;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    var(--vendor-color) 0%,
+    transparent 50%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.vendor-card:hover {
+  transform: translateY(-6px);
+  box-shadow:
+    0 12px 32px -8px rgba(0, 0, 0, 0.5),
+    0 0 24px -4px var(--vendor-color);
+  border-color: var(--vendor-color);
+}
+
+.vendor-card:hover::before {
+  opacity: 1;
+}
+
+.vendor-card:active {
+  transform: translateY(-2px) scale(0.98);
+}
+
+/* ---------- Logo 圆形区域 ---------- */
+.vendor-logo {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+  box-shadow:
+    0 4px 16px -2px rgba(0, 0, 0, 0.4),
+    inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  position: relative;
+}
+
+.vendor-logo::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(255, 255, 255, 0.2);
+}
+
+.vendor-logo span {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 1px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  user-select: none;
+}
+
+.vendor-card:hover .vendor-logo {
+  transform: scale(1.08);
+  box-shadow:
+    0 6px 24px -2px var(--vendor-color),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+/* ---------- 厂商信息 ---------- */
+.vendor-info {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.vendor-info h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  margin: 0 0 0.4rem;
+}
+
+.vendor-count {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--vendor-color);
+  background: color-mix(in srgb, var(--vendor-color) 15%, transparent);
+  padding: 0.2em 0.7em;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--vendor-color) 30%, transparent);
+}
+
+/* ---------- 模型列表 ---------- */
+.vendor-models {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.vendor-model-tag {
+  font-size: 0.78rem;
+  color: #cbd5e1;
+  background: #0f172a;
+  padding: 0.25em 0.65em;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  white-space: nowrap;
+}
+
+/* ---------- 底部点击提示 ---------- */
+.vendor-card-hint {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: auto;
+  padding-top: 0.5rem;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.vendor-card:hover .vendor-card-hint {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ============================================================
+   调度台 — Toast 提示
+   ============================================================ */
+.page-dispatch {
+  position: relative;
+}
+
+.dispatch-toast {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  padding: 0.6rem 1.4rem;
+  border-radius: 10px;
+  border: 1px solid #334155;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  animation: toastFade 3.5s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes toastFade {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+  10%  { opacity: 1; transform: translateX(-50%) translateY(0);    }
+  75%  { opacity: 1; transform: translateX(-50%) translateY(0);    }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+}
