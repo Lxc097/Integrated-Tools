@@ -1,43 +1,22 @@
-# Multi-model Dispatch Console
+# 多模型智能调度控制台
 
-A local React frontend prototype for multi-model task dispatching. This project currently does not include a backend API service.
+本地界面，把一段任务发给 Ollama、LM Studio，或 OpenAI、Anthropic、智谱、阿里百炼、DeepSeek。没有单独的后端，页面直接请求模型。调用逻辑在 [src/adapters/modelAdapters.js](src/adapters/modelAdapters.js)，各模型的接口名在 [src/data/models.js](src/data/models.js) 的 `apiModel`。
 
-## Run
+需要 Node.js 20 或更新版本。
 
-```powershell
-npm install --cache .\.npm-cache
+```bash
+npm install
 npm run dev
 ```
 
-Open the Vite local URL, usually `http://127.0.0.1:5173/`.
+如果 npm 缓存目录没有写权限，安装时加上 `--cache .npm-cache`。
 
-## Build
+浏览器打开 http://127.0.0.1:5173/ 。桌面窗口用 `npm run electron:dev`。`npm run build` 只生成页面，`npm run electron:build` 打 Windows 安装包，产物在 `release/`。`npm run preview` 适合看构建结果；普通浏览器里的在线请求可能被 CORS 拦住。开发服务器会把这些请求转到 Vite 代理。打包后的 Electron 窗口关闭了 `webSecurity`，可以直接请求厂商，同时开着 `nodeIntegration`，不要在这个窗口里打开不受信任的页面。
 
-```powershell
-npm run build
-```
+密钥有两种填法，页面里保存过的非空值优先。打开「API 密钥」保存后，写在本机 localStorage。也可以把 `.env.example` 复制为 `.env`，填写 `VITE_OPENAI_API_KEY`、`VITE_ANTHROPIC_API_KEY`、`VITE_ZHIPU_API_KEY`、`VITE_DASHSCOPE_API_KEY`、`VITE_DEEPSEEK_API_KEY`。改完 `.env` 要重新启动或重新构建。不要提交 `.env`。
 
-## Verify The 3D Globe
+Ollama 默认连 `http://localhost:11434`，模型名是 `llama3`，需要先 `ollama pull llama3`。LM Studio 默认连 `http://localhost:1234/v1`，用当前已经加载的模型。系统提示词会和任务一起提交。
 
-```powershell
-npm run verify:globe
-```
+地球位置用 `npm run verify:globe` 检查，脚本找本机 Chrome。不在默认路径时设置 `CHROME_PATH`。
 
-The verification script uses `playwright-core` with the locally installed Chrome executable. It checks desktop and mobile viewports, confirms the WebGL canvas is anchored in the lower-right corner, verifies `pointer-events: none`, and samples screenshot pixels to ensure the canvas is not blank.
-
-## Current Scope
-
-- 260px left sidebar navigation
-- Main content area capped at 1280px
-- Task input, model selection, and execution button
-- Local / Web source switch with dynamically filtered model options
-- Markdown result rendering
-- Prompt, Completion, Total Token, and Token Mode cards
-- Unified adapter interface returning `{ content, tokens }`
-- Three.js holographic globe in the lower-right corner
-- Glowing model nodes mapped onto the globe surface
-- Low-frequency cosmic background motion
-- Glassmorphism UI masks with `backdrop-filter: blur(10px)`
-- Desktop and mobile responsive layout
-
-To connect real APIs later, replace the mock adapters in [src/adapters/modelAdapters.js](D:/Integrated%20Tools/src/adapters/modelAdapters.js). The calling layer only depends on `adapter.run({ model, prompt })`, regardless of whether the model source is local or web.
+这次改动记在 [CHANGES.md](CHANGES.md)。

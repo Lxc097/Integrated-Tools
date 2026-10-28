@@ -5,10 +5,12 @@ import { MessageSquareText, Copy, Check } from 'lucide-react';
 export function ResultPanel({ result, timestamp }) {
   const [copied, setCopied] = useState(false);
 
+  const resultText = typeof result === 'string' ? result : result ? JSON.stringify(result, null, 2) : '';
+
   const handleCopy = async () => {
-    if (!result) return;
+    if (!resultText) return;
     try {
-      await navigator.clipboard.writeText(result);
+      await navigator.clipboard.writeText(resultText);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -35,31 +37,28 @@ export function ResultPanel({ result, timestamp }) {
           <p className="section-kicker">Result Preview</p>
           <h2>结果展示</h2>
           {timestamp && (
-            <p className="text-xs text-gray-500 mt-1">
-              生成时间：{formatTimestamp(timestamp)}
-            </p>
+            <p className="result-time">生成时间：{formatTimestamp(timestamp)}</p>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          {result && (
+        <div className="heading-actions">
+          {resultText && (
             <button
+              type="button"
               onClick={handleCopy}
-              className="p-1.5 rounded hover:bg-gray-100 transition-colors text-gray-600 hover:text-gray-900"
+              className={`icon-button ${copied ? 'copied' : ''}`}
               title="复制结果"
             >
-              {copied ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
+              {copied ? <Check size={18} /> : <Copy size={18} />}
             </button>
           )}
           <MessageSquareText size={18} />
         </div>
       </div>
       <article className="markdown-body">
-        {result ? (
-          <ReactMarkdown>{result}</ReactMarkdown>
+        {resultText ? (
+          <ReactMarkdown>{resultText}</ReactMarkdown>
         ) : (
-          <div className="flex items-center justify-center h-full text-gray-400 py-10">
-            暂无结果
-          </div>
+          <div className="result-empty">暂无结果</div>
         )}
       </article>
     </section>

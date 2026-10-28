@@ -57,11 +57,15 @@ export function ModelPanel({ model, sourceOptions, tokenUsage }) {
         </div>
         <div>
           <span>Base URL</span>
-          <strong title={model?.baseUrl ?? '-'}>{truncate(model?.baseUrl)}</strong>
+          <strong title={model?.baseUrl ?? '-'} style={{ textTransform: 'none' }}>{truncate(model?.baseUrl)}</strong>
         </div>
         <div>
           <span>API Key Env</span>
-          <strong>{model?.apiKeyEnv ?? '-'}</strong>
+          <strong style={{ textTransform: 'none' }}>{model?.apiKeyEnv ?? '-'}</strong>
+        </div>
+        <div>
+          <span>接口模型</span>
+          <strong style={{ textTransform: 'none' }}>{model?.apiModel || '运行时检测'}</strong>
         </div>
       </div>
       {tokenUsage.note ? <p className="token-note">{tokenUsage.note}</p> : null}

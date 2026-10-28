@@ -9,6 +9,7 @@ export const models = [
     tokenMode: 'estimated',
     baseUrl: 'http://localhost:11434',
     apiKeyEnv: null,
+    apiModel: 'llama3',
   },
   {
     id: 'lm-studio-qwen',
@@ -20,6 +21,7 @@ export const models = [
     tokenMode: 'estimated',
     baseUrl: 'http://localhost:1234/v1',
     apiKeyEnv: null,
+    apiModel: '',
   },
   {
     id: 'openai-gpt-5',
@@ -31,6 +33,7 @@ export const models = [
     tokenMode: 'reported',
     baseUrl: 'https://api.openai.com/v1',
     apiKeyEnv: 'VITE_OPENAI_API_KEY',
+    apiModel: 'gpt-5',
   },
   {
     id: 'claude-opus',
@@ -42,6 +45,7 @@ export const models = [
     tokenMode: 'reported',
     baseUrl: 'https://api.anthropic.com/v1',
     apiKeyEnv: 'VITE_ANTHROPIC_API_KEY',
+    apiModel: 'claude-opus-5-5',
   },
   {
     id: 'zhipu-glm',
@@ -53,6 +57,7 @@ export const models = [
     tokenMode: 'reported',
     baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
     apiKeyEnv: 'VITE_ZHIPU_API_KEY',
+    apiModel: 'glm-5.3',
   },
   {
     id: 'qwen-max',
@@ -64,6 +69,7 @@ export const models = [
     tokenMode: 'reported',
     baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     apiKeyEnv: 'VITE_DASHSCOPE_API_KEY',
+    apiModel: 'qwen3.7-max',
   },
   {
     id: 'qwen-plus',
@@ -75,6 +81,18 @@ export const models = [
     tokenMode: 'reported',
     baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     apiKeyEnv: 'VITE_DASHSCOPE_API_KEY',
+    apiModel: 'qwen3.7-plus',
+  },
+  {
+    id: 'deepseek-chat',
+    name: 'DeepSeek Chat',
+    vendor: 'DeepSeek',
+    source: 'web',
+    status: 'idle',
+    tokenMode: 'reported',
+    baseUrl: 'https://api.deepseek.com/v1',
+    apiKeyEnv: 'VITE_DEEPSEEK_API_KEY',
+    apiModel: 'deepseek-chat',
   },
 ];
 
