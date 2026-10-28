@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef } from 'react';
-import { Activity, BadgeCheck, Cpu, Gauge, Plus, Trash2, Download, Clock, CheckCircle2, XCircle, Save, Check, Upload } from 'lucide-react';
+import { Activity, BadgeCheck, Cpu, Gauge, Plus, Trash2, Download, Clock, CheckCircle2, XCircle, Save, Upload } from 'lucide-react';
 import { ModelPanel } from './components/ModelPanel.jsx';
 import { ResultPanel } from './components/ResultPanel.jsx';
 import { Sidebar } from './components/Sidebar.jsx';
@@ -9,16 +9,33 @@ import { CosmicBackdrop } from './components/CosmicBackdrop.jsx';
 import { getModelAdapter } from './adapters/modelAdapters.js';
 import { initialResult, models, sourceOptions } from './data/models.js';
 
-const defaultSource = 'local';
+function readDefaultSource() {
+  try {
+    const saved = localStorage.getItem('dispatch_default_source');
+    if (saved === 'local' || saved === 'web') return saved;
+  } catch {
+    // 存储不可用时使用本地源
+  }
+  return 'local';
+}
 
-const pageMap = {
-  '调度台': 'dispatch',
-  '模型池': 'models',
-  'API 密钥': 'apikeys',
-  '调用日志': 'logs',
-  '性能分析': 'analytics',
-  '系统设置': 'settings',
-};
+function pruneLogs(logs, retention) {
+  if (!Array.isArray(logs)) return [];
+  if (!retention || retention === 'unlimited') return logs;
+  const days = Number(retention);
+  if (!Number.isFinite(days) || days <= 0) return logs;
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  return logs.filter((log) => {
+    const parsed = Date.parse(log.time);
+    return Number.isNaN(parsed) || parsed >= cutoff;
+  });
+}
+
+function formatLogTime(value) {
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return value || '-';
+  return new Date(parsed).toLocaleString();
+}
 
 const globalStyles = `
   @keyframes fadeInUp {
@@ -211,10 +228,11 @@ export default function App() {
   const [activePage, setActivePage] = useState('dispatch');
   const [prompt, setPrompt] = useState('');
   const [systemPrompt, setSystemPrompt] = useState('');
-  const [source, setSource] = useState(defaultSource);
-  const [selectedModel, setSelectedModel] = useState(
-    models.find((item) => item.source === defaultSource)?.id ?? models[0].id,
-  );
+  const [source, setSource] = useState(readDefaultSource);
+  const [selectedModel, setSelectedModel] = useState(() => {
+    const initialSource = readDefaultSource();
+    return models.find((item) => item.source === initialSource)?.id ?? models[0].id;
+  });
   const [result, setResult] = useState(initialResult);
   const [tokenUsage, setTokenUsage] = useState({
     prompt: 0,
@@ -224,6 +242,7 @@ export default function App() {
     note: '',
   });
   const [isRunning, setIsRunning] = useState(false);
+  const [resultAt, setResultAt] = useState(null);
 
   // 将 dispatch 页面所需的 Ref 和 Handler 提升到 App 组件顶层
   const fileInputRef = useRef(null);
@@ -243,18 +262,26 @@ export default function App() {
   const [logHistory, setLogHistory] = useState(() => {
     try {
       const saved = localStorage.getItem('dispatch_logs');
-      return saved ? JSON.parse(saved) : [];
+      const parsed = saved ? JSON.parse(saved) : [];
+      const retention = localStorage.getItem('dispatch_log_retention') || '30';
+      const pruned = pruneLogs(parsed, retention);
+      if (saved && pruned.length !== parsed.length) {
+        localStorage.setItem('dispatch_logs', JSON.stringify(pruned));
+      }
+      return pruned;
     } catch {
       return [];
     }
   });
 
-  const [defaultSourceSetting, setDefaultSourceSetting] = useState(() => {
-    return localStorage.getItem('dispatch_default_source') || 'local';
-  });
+  const [defaultSourceSetting, setDefaultSourceSetting] = useState(readDefaultSource);
 
   const [logRetentionDays, setLogRetentionDays] = useState(() => {
-    return localStorage.getItem('dispatch_log_retention') || '30';
+    try {
+      return localStorage.getItem('dispatch_log_retention') || '30';
+    } catch {
+      return '30';
+    }
   });
 
   const availableModels = useMemo(
@@ -280,7 +307,8 @@ export default function App() {
       totalTokens += log.totalTokens || 0;
       totalLatency += log.latency || 0;
       if (log.status === 'success') successCount++;
-      if (new Date(log.time).toDateString() === today) todayCount++;
+      const parsedTime = Date.parse(log.time);
+      if (!Number.isNaN(parsedTime) && new Date(parsedTime).toDateString() === today) todayCount++;
     });
 
     const maxCount = Math.max(...Object.values(modelCounts), 1);
@@ -297,8 +325,12 @@ export default function App() {
 
   const addLog = (log) => {
     setLogHistory(prev => {
-      const next = [log, ...prev].slice(0, 200);
-      localStorage.setItem('dispatch_logs', JSON.stringify(next));
+      const next = pruneLogs([log, ...prev], logRetentionDays).slice(0, 200);
+      try {
+        localStorage.setItem('dispatch_logs', JSON.stringify(next));
+      } catch {
+        // 日志仍保留在当前会话
+      }
       return next;
     });
   };
@@ -327,20 +359,31 @@ export default function App() {
     
     try {
       const adapter = getModelAdapter(source);
-      const response = await adapter.run({ model, prompt: trimmed });
-      responseTokens = response.tokens;
-      setResult(response.content);
+      const response = await adapter.run({
+        model,
+        prompt: trimmed,
+        systemPrompt: systemPrompt.trim(),
+      });
+      responseTokens = {
+        prompt: response?.tokens?.prompt || 0,
+        completion: response?.tokens?.completion || 0,
+        total: response?.tokens?.total || 0,
+        precision: response?.tokens?.precision || 'reported',
+        note: response?.tokens?.note || '',
+      };
+      setResult(typeof response?.content === 'string' ? response.content : '');
     } catch (err) {
       status = 'failed';
-      setResult({ error: err.message || '调用失败' });
+      setResult(`### 调用失败\n\n${err.message || '未知错误'}`);
     } finally {
       const latency = Date.now() - startTime;
       setTokenUsage(responseTokens);
+      setResultAt(Date.now());
       setIsRunning(false);
-      
+
       addLog({
         id: Date.now().toString(),
-        time: new Date().toLocaleString(),
+        time: new Date().toISOString(),
         model: model.name,
         source: source,
         prompt: trimmed.length > 80 ? trimmed.slice(0, 80) + '...' : trimmed,
@@ -446,7 +489,7 @@ export default function App() {
               <ModelPanel model={model} sourceOptions={sourceOptions} tokenUsage={tokenUsage} />
             </section>
 
-            <ResultPanel result={result} />
+            <ResultPanel result={result} timestamp={resultAt} />
           </>
         );
 
@@ -479,7 +522,7 @@ export default function App() {
                   </div>
                   <div className="source-block">
                     <span className="field-label">延迟</span>
-                    <span>{m.latency !== undefined && m.latency !== null ? `${m.latency}ms` : '-'}</span>
+                    <span>{m.latency || '-'}</span>
                   </div>
                 </div>
               ))}
@@ -540,7 +583,7 @@ export default function App() {
                     <tbody>
                       {logHistory.map(log => (
                         <tr key={log.id}>
-                          <td style={{ whiteSpace: 'nowrap' }}>{log.time}</td>
+                          <td style={{ whiteSpace: 'nowrap' }}>{formatLogTime(log.time)}</td>
                           <td>{log.model}</td>
                           <td>{log.source}</td>
                           <td>{log.totalTokens}</td>
@@ -628,14 +671,19 @@ export default function App() {
                 </div>
                 <div className="source-block">
                   <span className="field-label">默认调用源</span>
-                  <select 
-                    className="prompt-input" 
-                    value={defaultSourceSetting} 
+                  <select
+                    className="setting-select"
+                    value={defaultSourceSetting}
                     onChange={(e) => {
-                      setDefaultSourceSetting(e.target.value);
-                      localStorage.setItem('dispatch_default_source', e.target.value);
+                      const value = e.target.value;
+                      setDefaultSourceSetting(value);
+                      try {
+                        localStorage.setItem('dispatch_default_source', value);
+                      } catch {
+                        // 当前会话仍会切换调用源
+                      }
+                      handleSourceChange(value);
                     }}
-                    style={{ maxWidth: '240px' }}
                   >
                     <option value="local">Local</option>
                     <option value="web">Web</option>
@@ -643,14 +691,23 @@ export default function App() {
                 </div>
                 <div className="source-block">
                   <span className="field-label">日志保留天数</span>
-                  <select 
-                    className="prompt-input" 
-                    value={logRetentionDays} 
+                  <select
+                    className="setting-select"
+                    value={logRetentionDays}
                     onChange={(e) => {
-                      setLogRetentionDays(e.target.value);
-                      localStorage.setItem('dispatch_log_retention', e.target.value);
+                      const value = e.target.value;
+                      setLogRetentionDays(value);
+                      setLogHistory((prev) => {
+                        const next = pruneLogs(prev, value);
+                        try {
+                          localStorage.setItem('dispatch_log_retention', value);
+                          localStorage.setItem('dispatch_logs', JSON.stringify(next));
+                        } catch {
+                          // 保留天数仍作用于当前会话
+                        }
+                        return next;
+                      });
                     }}
-                    style={{ maxWidth: '240px' }}
                   >
                     <option value="30">30 天</option>
                     <option value="60">60 天</option>
@@ -678,7 +735,7 @@ export default function App() {
     <div className="app-shell">
       <style>{globalStyles}</style>
       <CosmicBackdrop />
-      <Sidebar activePage={activePage} onNavigate={setActivePage} pageMap={pageMap} />
+      <Sidebar activePage={activePage} onNavigate={setActivePage} />
       <main className="main-area">
         <div className="content-wrap">
           <div key={activePage} className="page-enter">

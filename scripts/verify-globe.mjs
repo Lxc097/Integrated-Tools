@@ -1,9 +1,40 @@
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright-core';
 import { PNG } from 'pngjs';
 
-const chromePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+function findChrome() {
+  if (process.env.CHROME_PATH) {
+    if (!fs.existsSync(process.env.CHROME_PATH)) {
+      throw new Error(`CHROME_PATH 不存在: ${process.env.CHROME_PATH}`);
+    }
+    return process.env.CHROME_PATH;
+  }
+
+  const candidates = [
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  ];
+  const found = candidates.find((candidate) => fs.existsSync(candidate));
+  if (found) return found;
+
+  try {
+    const fromPath = execFileSync('which', ['google-chrome'], { encoding: 'utf8' }).trim();
+    if (fromPath) return fromPath;
+  } catch {
+    // which 不可用时继续抛出明确错误
+  }
+
+  throw new Error('未找到 Chrome/Chromium。请安装浏览器，或设置环境变量 CHROME_PATH。');
+}
+
+const chromePath = findChrome();
 const url = process.env.APP_URL ?? 'http://127.0.0.1:5173/';
 const outputDir = path.resolve('artifacts');
 
