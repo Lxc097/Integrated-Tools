@@ -9,6 +9,8 @@ npm install
 npm run dev
 ```
 
+如果 npm 缓存目录没有写权限，安装时加上 `--cache .npm-cache`。
+
 浏览器打开 http://127.0.0.1:5173/ 。桌面窗口用 `npm run electron:dev`。`npm run build` 只生成页面，`npm run electron:build` 打 Windows 安装包，产物在 `release/`。`npm run preview` 适合看构建结果；普通浏览器里的在线请求可能被 CORS 拦住。开发服务器会把这些请求转到 Vite 代理。打包后的 Electron 窗口关闭了 `webSecurity`，可以直接请求厂商，同时开着 `nodeIntegration`，不要在这个窗口里打开不受信任的页面。
 
 密钥有两种填法，页面里保存过的非空值优先。打开「API 密钥」保存后，写在本机 localStorage。也可以把 `.env.example` 复制为 `.env`，填写 `VITE_OPENAI_API_KEY`、`VITE_ANTHROPIC_API_KEY`、`VITE_ZHIPU_API_KEY`、`VITE_DASHSCOPE_API_KEY`、`VITE_DEEPSEEK_API_KEY`。改完 `.env` 要重新启动或重新构建。不要提交 `.env`。
